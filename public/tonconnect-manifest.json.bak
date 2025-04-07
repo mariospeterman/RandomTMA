@@ -1,0 +1,20 @@
+{
+  "url": "http://localhost:5000",
+  "name": "TingleTON",
+  "iconUrl": "http://localhost:5000/icon.png",
+  "termsOfUseUrl": "http://localhost:5000/terms",
+  "privacyPolicyUrl": "http://localhost:5000/privacy",
+  
+  "permissions": [
+    "tonAddress"
+  ],
+  
+  "platforms": [
+    "ios",
+    "android",
+    "web"
+  ],
+  
+  "telegram_app_url": "https://t.me/TingleTonBot/app",
+  "telegram_bot_username": "TingleTonBot"
+} 

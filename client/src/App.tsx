@@ -30,13 +30,13 @@ function Router() {
       const timer = setTimeout(() => {
         // Only redirect if the user hasn't interacted with the app yet
         const shouldRedirect = confirm(
-          "For the best experience, this app should be opened in Telegram. Would you like to open it in Telegram now?"
+          "This app works best when opened in Telegram. Would you like to open it in Telegram now?"
         );
         
         if (shouldRedirect) {
           window.open(TELEGRAM_BOT_URL, '_blank');
         }
-      }, 2000);
+      }, 1000);
       
       return () => clearTimeout(timer);
     }
@@ -55,15 +55,33 @@ function App() {
   useEffect(() => {
     console.log('App starting up...');
     
+    // Check if we're in Telegram WebApp environment
+    const isTelegramWebApp = !!window.Telegram?.WebApp;
+    console.log('Is Telegram WebApp:', isTelegramWebApp);
+    
     // If TON manifest URL is missing, log a warning
     if (!TON_MANIFEST_URL) {
       console.warn('TON_MANIFEST_URL is not set in the environment. TON Connect may not work correctly.');
     } else {
-      console.log('TON Connect configured with manifest URL.');
+      console.log('TON Connect configured with manifest URL:', TON_MANIFEST_URL);
+    }
+    
+    // Inform Telegram that the WebApp is ready
+    if (isTelegramWebApp && window.Telegram?.WebApp) {
+      try {
+        // Expand the WebApp to use full height
+        window.Telegram.WebApp.expand();
+        
+        // Use the ready method to finalize initialization
+        window.Telegram.WebApp.ready();
+        console.log('Notified Telegram WebApp that we are ready');
+      } catch (error) {
+        console.error('Error initializing Telegram WebApp:', error);
+      }
     }
   }, []);
   
-  // Use a default manifest URL if not provided in environment
+  // Use the configured manifest URL
   const manifestUrl = TON_MANIFEST_URL || 
     'https://raw.githubusercontent.com/ton-connect/demo-dapp-with-react-ui/main/public/tonconnect-manifest.json';
 

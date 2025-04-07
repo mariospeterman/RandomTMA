@@ -1,0 +1,20 @@
+{
+  "url": "https://8306-2003-cc-4f1c-98a-4c05-891-d54e-b791.ngrok-free.app",
+  "name": "TingleTON",
+  "iconUrl": "https://8306-2003-cc-4f1c-98a-4c05-891-d54e-b791.ngrok-free.app/icon.png",
+  "termsOfUseUrl": "https://8306-2003-cc-4f1c-98a-4c05-891-d54e-b791.ngrok-free.app/terms",
+  "privacyPolicyUrl": "https://8306-2003-cc-4f1c-98a-4c05-891-d54e-b791.ngrok-free.app/privacy",
+  
+  "permissions": [
+    "tonAddress"
+  ],
+  
+  "platforms": [
+    "ios",
+    "android",
+    "web"
+  ],
+  
+  "telegram_app_url": "https://t.me/TingleTonBot/app",
+  "telegram_bot_username": "TingleTonBot"
+} 

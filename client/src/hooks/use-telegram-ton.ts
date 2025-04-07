@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { TelegramUserData } from '@shared/schema';
 import { useToast } from './use-toast';
+import { useTonConnect } from './useTonConnect';
 
 // Import from environment settings
 import { TELEGRAM_BOT_URL } from '../lib/env';
@@ -53,9 +54,13 @@ export function useTelegramTon() {
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isNotInTelegram, setIsNotInTelegram] = useState<boolean>(false);
+  const [startParam, setStartParam] = useState<string | null>(null);
+  
+  // Get TonConnect to synchronize wallet connection
+  const { connected: isWalletConnected, wallet: walletAddress } = useTonConnect();
 
   // Function to help debug Telegram WebApp data
-  const debugTelegramWebApp = () => {
+  const debugTelegramWebApp = useCallback(() => {
     if (!window.Telegram?.WebApp) return;
     
     const webApp = window.Telegram.WebApp;
@@ -66,24 +71,106 @@ export function useTelegramTon() {
     // Log other properties
     console.log('Telegram WebApp isExpanded:', webApp.isExpanded);
     console.log('Telegram WebApp viewportHeight:', webApp.viewportHeight);
-  };
+    console.log('Telegram WebApp start_param:', webApp.initDataUnsafe.start_param);
+  }, []);
+
+  // Function to validate Telegram WebApp data
+  const verifyTelegramData = useCallback(async (initData: string) => {
+    if (!initData) return false;
+    
+    try {
+      // Send to our server endpoint for verification
+      const response = await fetch('/api/verify-telegram', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ initData }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to verify Telegram data with server');
+      }
+      
+      const result = await response.json();
+      return result.verified;
+    } catch (error) {
+      console.error('Error verifying Telegram data:', error);
+      
+      // Fallback verification (client-side only) for development
+      if (import.meta.env.DEV) {
+        console.log("DEV: Using client-side verification fallback");
+        const data = new URLSearchParams(initData);
+        const hasHash = data.has('hash');
+        const hasUser = data.has('user');
+        return hasHash && hasUser;
+      }
+      
+      return false;
+    }
+  }, []);
+
+  // Function to sync wallet address with server
+  const syncWalletWithServer = useCallback(async (userId: number, walletAddress: string | null) => {
+    if (!userId || !walletAddress) return;
+    
+    try {
+      const response = await fetch('/api/user/wallet', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          telegramId: userId,
+          walletAddress,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to sync wallet with server');
+      }
+      
+      console.log('Wallet synced with server successfully');
+    } catch (error) {
+      console.error('Error syncing wallet with server:', error);
+    }
+  }, []);
 
   useEffect(() => {
-    const initializeTelegram = () => {
+    const initializeTelegram = async () => {
       try {
         // Check if we're in Telegram WebApp environment
         if (window.Telegram?.WebApp) {
           // Debug information
           debugTelegramWebApp();
           
+          // Get WebApp instance
+          const webApp = window.Telegram.WebApp;
+          
           // Tell Telegram WebApp we're ready
-          window.Telegram.WebApp.ready();
+          webApp.ready();
           
           // Expand the WebApp
-          window.Telegram.WebApp.expand();
+          webApp.expand();
+          
+          // Verify the data integrity
+          const isValidData = await verifyTelegramData(webApp.initData);
+          
+          if (!isValidData && import.meta.env.PROD) {
+            console.error("Invalid Telegram WebApp data");
+            setError("Invalid Telegram data. Please try opening the app again.");
+            setIsNotInTelegram(true);
+            setIsInitialized(true);
+            return;
+          }
+          
+          // Extract start parameter if available
+          if (webApp.initDataUnsafe.start_param) {
+            setStartParam(webApp.initDataUnsafe.start_param);
+          }
           
           // Extract user info from initDataUnsafe
-          const user = window.Telegram.WebApp.initDataUnsafe.user;
+          const user = webApp.initDataUnsafe.user;
           
           if (user) {
             // Format user data to our schema
@@ -140,11 +227,19 @@ export function useTelegramTon() {
       } catch (err) {
         console.error("Error initializing Telegram:", err);
         setError(err instanceof Error ? err.message : "Unknown error initializing Telegram");
+        setIsInitialized(true);
       }
     };
 
     initializeTelegram();
-  }, [toast]);
+  }, [toast, debugTelegramWebApp, verifyTelegramData]);
+  
+  // If user has wallet connected, sync this information with the server
+  useEffect(() => {
+    if (telegramUser?.id && isWalletConnected && walletAddress) {
+      syncWalletWithServer(telegramUser.id, walletAddress);
+    }
+  }, [telegramUser?.id, isWalletConnected, walletAddress, syncWalletWithServer]);
   
   // Function to open the app in Telegram
   const openInTelegram = () => {
@@ -156,6 +251,7 @@ export function useTelegramTon() {
     isInitialized,
     isNotInTelegram,
     openInTelegram,
-    error
+    error,
+    startParam
   };
 }
