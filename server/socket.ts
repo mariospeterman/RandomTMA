@@ -1,6 +1,7 @@
 import { Server as HttpServer } from 'http';
 import { Server } from 'socket.io';
 import { storage } from './storage';
+import { IncomingMessage, ServerResponse } from 'http';
 
 export function setupSocketServer(httpServer: HttpServer) {
   const io = new Server(httpServer, {
@@ -15,7 +16,22 @@ export function setupSocketServer(httpServer: HttpServer) {
     pingInterval: 25000,       // Increased ping interval
     connectTimeout: 30000,     // Increased connection timeout
     maxHttpBufferSize: 1e8,    // Increased buffer size for signals (100MB)
-    path: '/socket.io'         // Explicitly set the path
+    path: '/socket.io',        // Explicitly set the path
+    // Enable connection state recovery for better reliability
+    connectionStateRecovery: {
+      // Maximum duration in milliseconds to recover connection state
+      maxDisconnectionDuration: 120000, // 2 minutes
+      // Skip middleware during restoration
+      skipMiddlewares: true,
+    },
+    // Performance optimizations
+    perMessageDeflate: {        // Compress websocket data
+      threshold: 1024,          // Only compress messages larger than 1KB
+      zlibDeflateOptions: {
+        level: 6,               // Compression level (0-9)
+        memLevel: 8             // Memory used for compression (1-9)
+      }
+    }
   });
 
   // Log server started
@@ -23,10 +39,40 @@ export function setupSocketServer(httpServer: HttpServer) {
   console.log('   - Path:', '/socket.io');
   console.log('   - Transports:', ['websocket', 'polling']);
   console.log('   - CORS:', 'enabled for all origins');
+  console.log('   - Connection recovery:', 'enabled (max 2 minutes)');
   
+  // Handle connection errors
   io.engine.on("connection_error", (err) => {
     console.error('❌ Socket.io connection error:', err.req.url, err.code, err.message, err.context);
   });
+
+  // Engine-level middleware for Express-like functionality
+  io.engine.use((req: IncomingMessage, res: ServerResponse, next: () => void) => {
+    // Add request logging
+    console.log(`${req.method} ${req.url}`);
+    // Add basic rate limiting
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    if (typeof ip === 'string' && isRateLimited(ip)) {
+      console.warn(`🚫 Rate limited request from ${ip}`);
+      res.writeHead(429, { 'Content-Type': 'text/plain' });
+      res.end('Too Many Requests');
+      return;
+    }
+    next();
+  });
+
+  // Simple rate limiting implementation
+  const ipRequests: Record<string, { count: number, resetAt: number }> = {};
+  function isRateLimited(ip: string): boolean {
+    const now = Date.now();
+    if (!ipRequests[ip] || ipRequests[ip].resetAt < now) {
+      ipRequests[ip] = { count: 1, resetAt: now + 60000 }; // 1 minute window
+      return false;
+    }
+    
+    ipRequests[ip].count++;
+    return ipRequests[ip].count > 100; // Limit to 100 requests per minute
+  }
 
   // Periodic check for stale connections
   setInterval(() => {

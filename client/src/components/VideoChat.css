@@ -1,0 +1,229 @@
+.video-chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.video-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .video-container {
+    flex-direction: row;
+    height: 70vh;
+  }
+}
+
+.video-wrapper {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 12px;
+  background-color: #2c2c2e;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.local-video-wrapper {
+  height: 30vh;
+}
+
+.remote-video-wrapper {
+  height: 40vh;
+}
+
+@media (min-width: 768px) {
+  .local-video-wrapper {
+    height: 100%;
+    width: 30%;
+  }
+  
+  .remote-video-wrapper {
+    height: 100%;
+    width: 70%;
+  }
+}
+
+video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background-color: #2c2c2e;
+}
+
+.play-button-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  z-index: 10;
+}
+
+.play-button {
+  background: rgba(0, 0, 0, 0.6);
+  border: none;
+  border-radius: 50%;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.play-button:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: scale(1.1);
+}
+
+.stream-status {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 5;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot.active {
+  background-color: #4CAF50;
+}
+
+.status-dot.inactive {
+  background-color: #FF9800;
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.start-button, .end-button {
+  padding: 12px 24px;
+  border-radius: 24px;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.start-button {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.start-button:hover:not(:disabled) {
+  background-color: #388E3C;
+  transform: scale(1.05);
+}
+
+.start-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.end-button {
+  background-color: #F44336;
+  color: white;
+}
+
+.end-button:hover {
+  background-color: #D32F2F;
+  transform: scale(1.05);
+}
+
+.searching-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #4CAF50;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.online-count {
+  font-size: 14px;
+  color: #666;
+}
+
+.cancel-button {
+  padding: 8px 16px;
+  border-radius: 20px;
+  background-color: #FF9800;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancel-button:hover {
+  background-color: #F57C00;
+}
+
+.debug-logs {
+  margin-top: 20px;
+  width: 100%;
+}
+
+.logs {
+  display: none;
+  height: 150px;
+  overflow-y: auto;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  padding: 10px;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.logs.show {
+  display: block;
+}
+
+.log-entry {
+  margin-bottom: 4px;
+  word-wrap: break-word;
+} 
