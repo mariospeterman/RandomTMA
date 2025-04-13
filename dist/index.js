@@ -133,10 +133,18 @@ function setupSocketServer(httpServer) {
     // Increased ping interval
     connectTimeout: 3e4,
     // Increased connection timeout
-    maxHttpBufferSize: 1e8
+    maxHttpBufferSize: 1e8,
     // Increased buffer size for signals (100MB)
+    path: "/socket.io"
+    // Explicitly set the path
   });
-  console.log("\u{1F50C} Socket.io server initialized");
+  console.log("\u{1F50C} Socket.io server initialized with configuration:");
+  console.log("   - Path:", "/socket.io");
+  console.log("   - Transports:", ["websocket", "polling"]);
+  console.log("   - CORS:", "enabled for all origins");
+  io.engine.on("connection_error", (err) => {
+    console.error("\u274C Socket.io connection error:", err.req.url, err.code, err.message, err.context);
+  });
   setInterval(() => {
     try {
       const onlineUsers = storage.getOnlineUsersArray();
@@ -363,10 +371,11 @@ function setupSocketServer(httpServer) {
           storage.set(`user:online:${currentUserTelegramId}`, user);
         }
       }
-      console.log(`\u{1F4E1} Signal from ${socket.id} in room ${roomId} (${signal.type || "unknown type"})`);
+      console.log(`\u{1F4E1} Signal from ${socket.id} in room ${roomId} (type: ${signal.type || "unknown"}, ${signal.candidate ? "ICE candidate" : signal.sdp ? "SDP" : "other data"})`);
       socket.to(roomId).emit("signal", {
         signal,
-        from: socket.id
+        from: socket.id,
+        roomId
       });
     });
     socket.on("end_chat", (data) => {

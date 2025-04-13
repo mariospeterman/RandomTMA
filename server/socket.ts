@@ -302,7 +302,8 @@ export function setupSocketServer(httpServer: HttpServer) {
       
       console.log(`🔄 Created room ${roomId} for users ${telegramId} and ${match.telegramId}`);
       
-      // Send match info to both users
+      // Send match info to both users with slightly staggered timing
+      // Send to initiator first (they'll start creating the peer connection as initiator)
       initiatorSocket.emit('chat_matched', {
         roomId,
         isInitiator: true,
@@ -314,22 +315,28 @@ export function setupSocketServer(httpServer: HttpServer) {
         }
       });
       
-      receiverSocket.emit('chat_matched', {
-        roomId,
-        isInitiator: false,
-        peer: {
-          telegramId: telegramId,
-          username: storage.get(`user:online:${telegramId}`)?.username,
-          firstName: storage.get(`user:online:${telegramId}`)?.firstName,
-          lastName: storage.get(`user:online:${telegramId}`)?.lastName
-        }
-      });
-      
-      // Update system stats
-      console.log('📊 System stats after match:', storage.getStats());
-      
-      // Broadcast to all clients that online count changed
-      io.emit('online_count', storage.getStats());
+      // Brief delay to ensure initiator has time to set up their peer connection
+      setTimeout(() => {
+        // Then send to receiver
+        receiverSocket.emit('chat_matched', {
+          roomId,
+          isInitiator: false,
+          peer: {
+            telegramId: telegramId,
+            username: storage.get(`user:online:${telegramId}`)?.username,
+            firstName: storage.get(`user:online:${telegramId}`)?.firstName,
+            lastName: storage.get(`user:online:${telegramId}`)?.lastName
+          }
+        });
+        
+        console.log(`👥 Match information sent to both users with proper timing`);
+        
+        // Update system stats
+        console.log('📊 System stats after match:', storage.getStats());
+        
+        // Broadcast to all clients that online count changed
+        io.emit('online_count', storage.getStats());
+      }, 1000); // 1 second delay between initiator and receiver setup
       
       return true;
     }
@@ -352,12 +359,22 @@ export function setupSocketServer(httpServer: HttpServer) {
         }
       }
       
-      console.log(`📡 Signal from ${socket.id} in room ${roomId} (${signal.type || 'unknown type'})`);
+      // Improved logging
+      console.log(`📡 Signal from ${socket.id} in room ${roomId} (type: ${signal.type || 'candidate'}, ${signal.candidate ? 'ICE candidate' : signal.sdp ? 'SDP' : 'other data'})`);
       
-      // Broadcast the signal to everyone in the room except the sender
+      // Make sure the socket is actually in the room
+      const rooms = socket.rooms;
+      if (!rooms.has(roomId)) {
+        console.log(`⚠️ Socket ${socket.id} tried to send signal to room ${roomId} but is not in that room`);
+        socket.emit('error', { message: 'Not a member of this room' });
+        return;
+      }
+      
+      // Forward the signal exactly as received to maintain WebRTC compatibility
       socket.to(roomId).emit('signal', {
         signal,
-        from: socket.id
+        from: socket.id,
+        roomId
       });
     });
     
